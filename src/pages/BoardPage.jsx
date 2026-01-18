@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -9,58 +10,49 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { getBoardById, getListByBoard, createList } from "../api/apicalls";
-import BoardList from "../components/board/BoardList";
+import { fetchBoardById } from "../features/boardDetails/boardDetailsThunks";
+import {
+  fetchLists,
+  createNewList,
+} from "../features/boardDetails/lists/listsThunks";
 
+import BoardList from "../components/board/BoardList";
 
 function BoardPage() {
   const { boardId } = useParams();
   const navigate = useNavigate();
-  const [board, setBoard] = useState(null);
-  const [lists, setLists] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+
+  const {
+    currentBoard: board,
+    loading: boardLoading,
+    error: boardError,
+  } = useSelector((state) => state.boardDetails);
+  const {
+    lists,
+    loading: listsLoading,
+    error: listsError,
+  } = useSelector((state) => state.lists);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const fetchLists = async () => {
-    try {
-      const listsResponse = await getListByBoard(boardId);
-      setLists(listsResponse.data);
-    } catch (err) {
-      console.error("Error fetching lists:", err);
+  useEffect(() => {
+    if (boardId) {
+      dispatch(fetchBoardById(boardId));
+      dispatch(fetchLists(boardId));
     }
+  }, [dispatch, boardId]);
+
+  const handleListDeleted = () => {
+    dispatch(fetchLists(boardId));
   };
 
-  useEffect(() => {
-    const fetchBoardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const handleListAdded = (name) => {
+    dispatch(createNewList(boardId, name));
+  };
 
-        const boardResponse = await getBoardById(boardId);
-        setBoard(boardResponse.data);
-
-        await fetchLists();
-      } catch (err) {
-        console.error("Error fetching board data:", err);
-        setError("Failed to load board. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (boardId) fetchBoardData();
-  }, [boardId]);
-
-  const handleListDeleted = () => fetchLists();
-  const handleListAdded = (name) =>
-    createList(boardId, name)
-      .then(() => fetchLists())
-      .catch(() => alert("Failed to create list. Please try again."));
-
-  if (loading)
+  if (boardLoading || listsLoading) {
     return (
       <Box
         sx={{
@@ -74,8 +66,9 @@ function BoardPage() {
         <CircularProgress />
       </Box>
     );
+  }
 
-  if (error)
+  if (boardError || listsError) {
     return (
       <Box
         sx={{
@@ -84,11 +77,12 @@ function BoardPage() {
           minHeight: "calc(100vh - 64px)",
         }}
       >
-        <Typography color="error">{error}</Typography>
+        <Typography color="error">{boardError || listsError}</Typography>
       </Box>
     );
+  }
 
-  if (!board)
+  if (!board) {
     return (
       <Box
         sx={{
@@ -100,6 +94,7 @@ function BoardPage() {
         <Typography sx={{ color: "#fff" }}>Board not found</Typography>
       </Box>
     );
+  }
 
   const backgroundImage =
     board.prefs?.backgroundImageScaled?.[2]?.url ||

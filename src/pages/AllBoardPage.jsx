@@ -1,42 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Box, Typography } from "@mui/material";
-import { getBoards, createBoard } from "../api/apicalls";
+import {fetchBoards, createNewBoard} from  "../features/allBoards/allBoardsThunks"
 import Board from "../components/board/Board";
 import AddNewBoard from "../components/board/AddNewBoard";
 
 function BoardsPage() {
-  const [boards, setBoards] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-
-  // fetch all boards 
-  const fetchBoards = async () => {
-    try {
-      setLoading(true);
-      const res = await getBoards();
-      setBoards(res.data);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load boards. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const dispatch = useDispatch();
+  const { boards, loading, error } = useSelector(state => state.boards);
 
   useEffect(() => {
-    fetchBoards();
-  }, []);
+    dispatch(fetchBoards());
+  }, [dispatch]);
 
-
-  // handle create board
   const handleCreateBoard = async (name) => {
-    try {
-      await createBoard(name);
-      await fetchBoards();
-    } catch (err) {
-      setError("Failed to create board. Please try again.");
-    }
+    dispatch(createNewBoard(name));
   };
 
   if (loading) {
